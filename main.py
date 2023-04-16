@@ -1,72 +1,67 @@
-# put all your fingers down except the index finger and the thumb when you reach the dark brown path
-# start tracking the shape, A blue line will start showing following your path
-# game is over once the entire shape is traced
-
+import os
 import cv2
-from cvzone import HandTrackingModule, overlayPNG
+import time
 import numpy as np
-intro = ('frames/img1.jpeg')
-kill = ('frames/img2.img2.png')
-winner = ('frames/img3.png')
+from cvzone import overlayPNG
+from module import HandTrackingModule
 
-# read the camera
-cam = cv2.VideoCapture(0)
+folderpath = 'frames'
+mylist = os.listdir(folderpath)
+graphic = [cv2.imread(f'{folderpath}/{impath}') for impath in mylist]
+
+intro = graphic[0]
+kill = graphic[1]
+win = graphic[2]
+mlsa = graphic[3]
+square = graphic[4]
+
+cap = cv2.VideoCapture(0)
+cap.set(3, 1280)
+cap.set(4, 720)
 
 detector = HandTrackingModule.HandDetector(maxHands=1, detectionCon=0.77)
-# INITILIZING GAME COMPONENTS
-# ----------------------------------------------------------------
-sqr_img = ('img/sqr (2).png')  # read img/sqr (1) in the sqr_img variable
-mlsa = ('img/mlsa.png')  # read img/mlsa in the mlsa variable
 
-# INTRO SCREEN WILL STAY UNTIL Q IS PRESSED
+gameOver = False
+NotWon = True
 
-while True:
-    # Capture video from camera
-    ret, frame = cam.read()
-    if not ret:
+while not gameOver:
+    success, frame = cap.read()
+    if not success:
         break
 
-    # Convert frame to grayscale
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    # Detect hand in the frame
-    hand, _ = detector.findHands(frame)
-    fingers = detector.fingersUp()
+    hand, handBox = detector.findHands(gray)
+    if hand:
+        lmList = hand["lmList"]
+        fingertips = [lmList[4], lmList[8]]
 
-    # Draw intro screen
-    cv2.imshow('Intro Screen', intro)
+        if fingertips[0][1] < handBox[1] and fingertips[1][1] < handBox[1]:
+            cv2.line(frame, fingertips[0], fingertips[1], (255, 0, 0), 3)
 
-    # Check if index finger and thumb are up
-    if len(fingers) == 2 and fingers[1] == 1 and fingers[2] == 1:
-        # Draw blue line following the hand path
-        overlayPNG(frame, mlsa, [200, 200])
+            if handBox[1] > hand["bbox"][1] + hand["bbox"][3] // 2:
+                gameOver = True
+                NotWon = False
 
-    # Check if entire shape is traced
-    # condition to check if entire shape is traced:
-    if hand and hand[0]['lmList'][8][1] > rectangle_y and hand[0]['lmList'][8][1] < rectangle_y + rectangle_h and hand[0]['lmList'][8][0] > rectangle_x and hand[0]['lmList'][8][0] < rectangle_x + rectangle_w:
-        gameOver = True
+    cv2.imshow("Game", frame)
+    cv2.waitKey(1)
 
-    # Check if lost
-    if NotWon:
-        for i in range(10):
-            # show the loss screen from the kill image read before
-            cv2.imshow('Loss Screen', kill)
-            cv2.waitKey(1)
-        while True:
-            # show the loss screen from the kill image read before
-            cv2.imshow('Loss Screen', kill)
-            if cv2.waitKey(1) & 0xFF == ord('q'):  # end it after we press q
-                break
-    else:
-        # Check if won
-        # show the win screen from the winner image read before
-        cv2.imshow('Win Screen', winner)
-        while True:
-            # show the win screen from the winner image read before
-            cv2.imshow('Win Screen', winner)
-            if cv2.waitKey(1) & 0xFF == ord('q'):  # end it after we press q
-                break
+if NotWon:
+    for i in range(10):
+        cv2.imshow("Game", kill)
+        cv2.waitKey(1)
+    while True:
+        cv2.imshow("Game", kill)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-# destroy all the windows
+else:
+    for i in range(10):
+        cv2.imshow("Game", win)
+        cv2.waitKey(1)
+    while True:
+        cv2.imshow("Game", win)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
 cv2.destroyAllWindows()
